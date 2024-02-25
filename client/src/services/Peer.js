@@ -11,9 +11,7 @@ class PeerService {
                     },
                 ],
             });
-            this.fileChannel = this.peer.createDataChannel(`file-transfer-${Date.now()}`, {
-                negotiated: true
-            });
+            this.fileChannel = this.peer.createDataChannel(`file-transfer-${Date.now()}`);
             this.fileChannel.onopen = this.handleFileChannelOpen;
         }
     }
