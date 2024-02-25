@@ -1,0 +1,12 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+input[type="text"] {
+    @apply block mb-2 rounded-xl;
+    @apply border p-2 border-gray-300 bg-gray-100;
+}
+
+.form {
+    @apply h-[100vh] flex flex-col justify-center items-center;
+}
