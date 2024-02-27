@@ -9,4 +9,36 @@ input[type="text"] {
 
 .form {
     @apply h-[100vh] flex flex-col justify-center items-center;
+    background: rgba(146, 118, 236, 0.3);
+    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(146, 118, 236, 0.15);
+    @apply w-full p-5 md:w-4/6 lg:w-3/6 xl:w-2/5 mt-0 mx-auto h-auto lg:h-auto md:h-auto
+}
+
+.form-content {
+    @apply p-10 mx-auto flex flex-col items-center gap-3
+}
+
+main {
+    background: url('/file-sharing-bg.png') no-repeat center;
+    background-size: cover;
+    object-fit: contain;
+    @apply justify-center items-center flex fixed inset-0 z-50 h-full
+}
+
+.btn {
+    @apply py-2 px-12 border-0 disabled:opacity-70 disabled:cursor-not-allowed rounded-lg hover:opacity-80 transition bg-purple-700 text-white
+}
+
+.room-page {
+    @apply h-screen flex flex-col justify-center items-center
+}
+
+.input-file {
+    @apply w-full p-2 border-2 border-dashed border-gray-700 rounded-xl text-center cursor-pointer
+}
+
+.file {
+    @apply hidden
 }

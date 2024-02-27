@@ -35,9 +35,10 @@ export default function Home() {
 
 
   return (
-    <main>
-      <form>
-        <div className="form">
+    <main className="main-bg">
+      <form className="form">
+        <h1 className="text-3xl flex justify-between">XShare - Share your files</h1>
+        <div className="form-content">
           <div className="name">
             <label htmlFor="name">Name</label>
             <input
@@ -57,7 +58,7 @@ export default function Home() {
               onChange={(e) => setRoom(e.target.value)}
             />
           </div>
-          <button onClick={handleSubmit}>Join</button>
+          <button className="btn" onClick={handleSubmit}>Join</button>
         </div>
       </form>
     </main>
