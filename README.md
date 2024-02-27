@@ -15,13 +15,13 @@ This is a file sharing app where the peers when successfull connection able to t
 
 ## Technologies Used
 
-- **WebRTC:** Describe how WebRTC is used in your project and its significance.
-- **Next.js:** Explain how Next.js is utilized and its role in the project.
-- **Socket.io:** Discuss the integration of Socket.io and its importance for real-time communication.
-- **React.js:** Briefly mention the use of React and its components in your application.
-- **Typescript:** Briefly mention the use of React and its components in your application.
-- **Other Technologies:** List any other significant technologies or libraries used.
-
+- **WebRTC:**
+- **Next.js:** 
+- **Socket.io:** 
+- **React.js:** 
+- **Typescript:** 
+- **Other Technologies:**
+  
 
 # Steps
 ## 1: Enter your name and the room id
