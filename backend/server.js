@@ -37,16 +37,16 @@ io.on('connection', (socket) => {
         io.to(to).emit('incoming:call', { from: socket.id, offer, nameId });
     });
 
-    socket.on('call:accepted', (data) => {
-        const { to, ans } = data;
-        io.to(to).emit('call:accepted', { from: socket.id, ans });
+
+    socket.on("call:accepted", ({ to, ans }) => {
+        io.to(to).emit("call:accepted", { from: socket.id, ans });
     });
 
     socket.on("peer:nego:needed", ({ to, offer }) => {
-        console.log("peer:nego:needed", offer);
+        // console.log("peer:nego:needed", offer);
         io.to(to).emit("peer:nego:needed", { from: socket.id, offer });
     });
-
+    
     socket.on("peer:nego:done", ({ to, ans }) => {
         console.log("peer:nego:done", ans);
         io.to(to).emit("peer:nego:final", { from: socket.id, ans });
@@ -57,6 +57,7 @@ io.on('connection', (socket) => {
         users = users.filter((id) => socket.id !== id);
         console.log('Disconnect', socket.id);
     });
+
 });
 
 const PORT = process.env.PORT || 8000;

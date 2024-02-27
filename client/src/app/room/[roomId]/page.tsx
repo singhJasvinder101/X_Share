@@ -8,9 +8,10 @@ import peer from '@/services/peer'
 const page = () => {
     const socket = useSocket()
     const fileRef = useRef()
-    const [remoteSocketId, setRemoteSocketId] = useState<string | null>()
+    const [remoteSocketId, setRemoteSocketId] = useState(null);
     const [remoteUser, setRemoteUser] = useState<string | null>()
-    const [isNegotiationNeeded, setIsNegotiationNeeded] = useState<boolean | null>(false);
+    const [downloadLink, setDownloadLink] = useState<string | null>(null);
+    const [receivedChunks, setReceivedChunks] = useState<{ metadata: FileMetadata | null; chunks: ArrayBuffer[] } | null>(null);
 
     const handleRoomJoined = (data: any) => {
         console.log(`NameId ${data.nameId} joined room`);
@@ -25,26 +26,36 @@ const page = () => {
     }, [remoteSocketId, socket])
 
 
+    useEffect(() => {
+        // todo: done later to use peer.remotesocketid
+        peer.remoteSocketId = remoteSocketId
+    }, [remoteSocketId])
+
+
     const handleIncomingCall = useCallback(async (data: any) => {
         const { from, offer, nameId } = data;
-
-        const ans = await peer.getAnswer(offer)
+        setRemoteSocketId(from);
+        const ans = await peer.getAnswer(offer);
         setRemoteUser(nameId)
-        // jisse call aayi usse bhejdo
-        socket?.emit('call:accepted', { to: from, ans })
+        // jisse call aayi usse bhej do
+        socket?.emit("call:accepted", { to: from, ans });
     }, [socket])
 
 
-    const handleCallAccepted = useCallback(async (data: any) => {
-        const { ans } = data;
-        await peer.setLocalDescription(ans)
-        console.log("call accepted");
-    }, [])
-
+    const handleCallAccepted = useCallback(
+        (data: any) => {
+            const { from, ans } = data;
+            console.log(peer)
+            peer.setLocalDescription(ans);
+            console.log("Call Accepted!");
+        },
+        []
+    );
 
     const handleNegoNeeded = useCallback(async () => {
-        console.log("negotiation triggered")
+        console.log(remoteSocketId)
         const offer = await peer.getOffer();
+        // console.log(offer, remoteSocketId)
         socket?.emit("peer:nego:needed", { offer, to: remoteSocketId });
     }, [remoteSocketId, socket]);
 
@@ -57,8 +68,10 @@ const page = () => {
 
     const handleNegoNeedIncomming = useCallback(
         async (data: any) => {
-            const { from, offer } = data
+            console.log(remoteSocketId)
+            const { from, offer } = data;
             const ans = await peer.getAnswer(offer);
+            console.log(ans)
             socket?.emit("peer:nego:done", { to: from, ans });
         },
         [socket]
@@ -66,10 +79,14 @@ const page = () => {
 
     const handleNegoNeedFinal = useCallback(async (data: any) => {
         const { ans } = data
+        console.log(ans)
         await peer.setLocalDescription(ans);
     }, []);
 
+    useEffect(() => {
+        console.log(peer.fileChannel);
 
+    }, [peer.fileChannel]);
 
     const handleFileChange = (e: any) => {
         fileRef.current = e.target.files[0]
@@ -80,8 +97,10 @@ const page = () => {
         size: number;
         type: string;
     };
-
+    
+    const chunkSize = 16 * 1024; // 16 KB chunks
     const handleSendFile = async () => {
+        console.log(peer.fileChannel)
         if (fileRef.current && peer.fileChannel) {
             console.log(peer)
             const file: File = fileRef.current;
@@ -99,11 +118,11 @@ const page = () => {
                 console.log("hello")
                 peer.fileChannel.send(JSON.stringify(metadata));
 
-                const chunkSize = 16 * 1024; // 16 KB chunks
                 for (let offset = 0; offset < arrayBuffer.byteLength; offset += chunkSize) {
                     const chunk = arrayBuffer.slice(offset, offset + chunkSize);
 
                     if (peer.fileChannel.readyState === 'open') {
+                        console.log(chunk)
                         peer.fileChannel.send(chunk);
                     } else {
                         console.log('RTCDataChannel not in open state when sending chunk.');
@@ -135,60 +154,74 @@ const page = () => {
         });
     };
 
-    const handleReceiveFile = async (data: any) => {
-        const { metadata, chunks } = data;
-
-        const receivedChunks: ArrayBuffer[] = [];
-        for (const chunk of chunks) {
-            receivedChunks.push(new Uint8Array(chunk).buffer);
+    const handleReceiveFile = useCallback((data: any) => {
+        if (typeof data === 'string') {
+            console.log("metadata")
+            const metadata = JSON.parse(data);
+            setReceivedChunks((prevChunks) => prevChunks ? { ...prevChunks, metadata } : { metadata, chunks: [] });
+        } else if (data instanceof ArrayBuffer) {
+            console.log("chunk")
+            setReceivedChunks((prevChunks) => prevChunks ? { ...prevChunks, chunks: [...prevChunks.chunks, data] } : { metadata: null, chunks: [data] });
         }
+    }, []);
+    
+    useEffect(() => {
+        console.log(receivedChunks)
+        if (receivedChunks && receivedChunks.metadata && receivedChunks.chunks.length === Math.ceil(receivedChunks.metadata.size / chunkSize)) {
+            console.log("hello")
+            const fileData = new Blob(receivedChunks.chunks, {
+                type: receivedChunks.metadata.type,
+            });
+            const downloadLink = URL.createObjectURL(fileData);
+            setDownloadLink(downloadLink);
+            console.log(downloadLink);
 
-        const fileData = new Blob(receivedChunks, { type: metadata.type });
-        const downloadLink = URL.createObjectURL(fileData);
+            console.log(`Received file: ${receivedChunks.metadata.name}`);
+            console.log(`Size: ${receivedChunks.metadata.size} bytes`);
+            console.log(`Type: ${receivedChunks.metadata.type}`);
 
-        console.log(`Received file: ${metadata.name}`);
-        console.log(`Size: ${metadata.size} bytes`);
-        console.log(`Type: ${metadata.type}`);
-
-        // Example: Create a download link in your UI
-        const downloadButton = document.createElement('a');
-        downloadButton.href = downloadLink;
-        downloadButton.download = metadata.name;
-        downloadButton.textContent = 'Download File';
-        document.body.appendChild(downloadButton);
-    };
+            const downloadButton = document.createElement('a');
+            downloadButton.href = downloadLink;
+            downloadButton.download = receivedChunks.metadata.name;
+            downloadButton.textContent = receivedChunks.metadata.name;
+            document.body.appendChild(downloadButton);
+        }
+    }, [receivedChunks]);
 
     useEffect(() => {
         console.log(peer.fileChannel?.readyState)
-        // Listen for file data on the fileChannel
-        peer.fileChannel?.addEventListener('message', (event) => {
-            const data = JSON.parse(event.data);
-
-            if (data.metadata && data.chunks) {
-                handleReceiveFile(data);
+        if (peer.peer) {
+            peer.peer.ondatachannel = (e) => {
+                console.log("ondatachannel")
+                //@ts-ignore
+                peer.remoteDataChanel = e.channel
+                //@ts-ignore
+                peer.remoteDataChanel.onmessage = (e) => {
+                    let data = e.data;
+                    console.log(typeof data, data)
+                    handleReceiveFile(data);
+                }
             }
-        });
+        }
 
         return () => {
             peer.fileChannel?.removeEventListener('message', handleReceiveFile);
         };
-    }, [peer.fileChannel]);
+    }, [peer.fileChannel, peer]);
 
 
     useEffect(() => {
-        if (typeof window !== undefined && window.RTCPeerConnection) {
-            socket?.on('user:joined', handleRoomJoined)
-            socket?.on("incoming:call", handleIncomingCall);
-            socket?.on("call:accepted", handleCallAccepted);
-            socket?.on("peer:nego:needed", handleNegoNeedIncomming);
-            socket?.on("peer:nego:final", handleNegoNeedFinal);
-            return () => {
-                socket?.off("user:joined", handleRoomJoined);
-                socket?.off("incoming:call", handleIncomingCall);
-                socket?.off("call:accepted", handleCallAccepted);
-                socket?.off("peer:nego:needed", handleNegoNeedIncomming);
-                socket?.off("peer:nego:final", handleNegoNeedFinal);
-            }
+        socket?.on('user:joined', handleRoomJoined)
+        socket?.on("incoming:call", handleIncomingCall);
+        socket?.on("call:accepted", handleCallAccepted);
+        socket?.on("peer:nego:needed", handleNegoNeedIncomming);
+        socket?.on("peer:nego:final", handleNegoNeedFinal);
+        return () => {
+            socket?.off("user:joined", handleRoomJoined);
+            socket?.off("incoming:call", handleIncomingCall);
+            socket?.off("call:accepted", handleCallAccepted);
+            socket?.off("peer:nego:needed", handleNegoNeedIncomming);
+            socket?.off("peer:nego:final", handleNegoNeedFinal);
         }
 
     }, [
@@ -210,6 +243,7 @@ const page = () => {
             <input type="file" onChange={handleFileChange} />
             <button onClick={handleSendFile}>Send File</button>
             {remoteSocketId && <button onClick={handleCallUser}>CALL</button>}
+            {downloadLink && <a href={downloadLink} download="received_file">Download File</a>}
         </div>
     )
 }
