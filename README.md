@@ -1,5 +1,3 @@
-## Project Title
-
 # X-Share
 
 ## Table of Contents
